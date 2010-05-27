@@ -129,9 +129,7 @@ def backup_repo(clone_url, target_dir, verbose):
     backup_method = 'clone'
 
     # If the filesystem does not use Unicode (from Python’s
-    # perspective), convert target_dir to plain ASCII. Mainly
-    # affects Windows. While we should be able to convert to
-    # the filesystem encoding, I’ve found it doesn’t always work.
+    # perspective), convert target_dir to plain ASCII.
     if not sys.getfilesystemencoding().upper().startswith('UTF'):
         target_dir = target_dir.encode('ascii', 'xmlcharrefreplace')
 
@@ -167,11 +165,9 @@ def backup_repo(clone_url, target_dir, verbose):
     else:
         args = ['hg', 'pull', '-R', target_dir]
 
-    # KilnAuth uses the os.path.expanduser function. While that is
-    # documented to use %USERPROFILE%, which is set, it does not
-    # actually seem to do so when this script is run from Scheduled
-    # Tasks. Instead it only appears to work if %HOMEDRIVE% and
-    # %HOMEPATH% are set.
+    # KilnAuth uses os.path.expanduser which should use
+    # %USERPROFILE%. When run from Scheduled Tasks, it does not seem
+    # to work unless you also set %HOMEDRIVE% and %HOMEPATH%.
     child_env = os.environ
     if os.name == 'nt':
         (drive, path) = os.path.splitdrive(os.environ['USERPROFILE'])
@@ -261,11 +257,7 @@ def main():
         current_group = None
 
     # Keep track of overall success status. We continue backing up
-    # even if there’s an error. Windows Scheduled Tasks does not
-    # notify the administrator if an error occurred, so if you had
-    # a faulty repo, and we did not continue, you could miss a large
-    # part of your backup and not know it. On Linux/Mac, cron will
-    # e-mail the user when a script fails.
+    # even if there’s an error.
     overall_success = True
 
     # Back up the repositories
@@ -284,16 +276,13 @@ def main():
             # name as a header, and under that, list the repo names
             # being backed up. Also show a counter.
 
-            # Get the current project/group value.
             group = os.path.commonprefix([last_subdirectory,
                 os.path.dirname(subdirectory)])
 
-            # Print the project/group header
             if group != current_group:
                 current_group = os.path.dirname(subdirectory)
                 print console_encode('\n%s' % current_group)
 
-            # Print the repo name currently being backed up
             last_subdirectory = subdirectory
             count += 1
             print console_encode('    >> [%d/%d] %s' % (count, len(repos),
