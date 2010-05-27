@@ -157,6 +157,9 @@ def backup_repo(clone_url, target_dir, verbose):
             if verbose:
                 print console_encode('(archived); continuing backup...'),
                 sys.stdout.flush()
+    else:
+        # Path doesn’t exist: create it
+        os.makedirs(target_dir)
 
     # Back it up
     if backup_method == 'clone':
@@ -164,7 +167,18 @@ def backup_repo(clone_url, target_dir, verbose):
     else:
         args = ['hg', 'pull', '-R', target_dir]
 
-    proc = Popen(args, stdout=PIPE, stderr=PIPE)
+    # KilnAuth uses the os.path.expanduser function. While that is
+    # documented to use %USERPROFILE%, which is set, it does not
+    # actually seem to do so when this script is run from Scheduled
+    # Tasks. Instead it only appears to work if %HOMEDRIVE% and
+    # %HOMEPATH% are set.
+    child_env = os.environ
+    if os.name == 'nt':
+        (drive, path) = os.path.splitdrive(os.environ['USERPROFILE'])
+        child_env['HOMEDRIVE'] = drive
+        child_env['HOMEPATH'] = path
+    
+    proc = Popen(args, stdout=PIPE, stderr=PIPE, env=child_env)
     (_, stderrdata) = proc.communicate()
     if proc.returncode:
         print console_encode('**** FAILED ****')
