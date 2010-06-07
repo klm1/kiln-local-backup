@@ -27,14 +27,18 @@ OVERVIEW
 
 GETTING STARTED
 
-  You need:
+  For Windows you need:
 
     * A Kiln account
     * A FogBugz API token
     * Python 2.4 or higher
+    * simplejson (not needed with Python 2.6 or higher)
+    * The Kiln Tools installed
+
+  On other platforms, you’ll also need to install:
+
     * Mecurial 1.3 or higher
     * The KilnAuth Mercurial extension
-    * simplejson (not needed with Python 2.6 or higher)
 
   If you are missing any of these, see REFERENCES at the end of this document.
 
@@ -48,7 +52,7 @@ BACKING UP
   You will be prompted for your API token and Kiln server name. If your
   credentials aren’t stored in KilnAuth, you’ll also be prompted for your
   password.
-  
+
   Your API token and server name are saved to a file in the backup directory,
   so you won’t have to enter them next time.
 
@@ -67,6 +71,12 @@ FAQS
   A: No, it’s not. With Mercurial, the entire repository is stored in the .hg
      subdirectory, which may be hidden. You can clone the repository to see
      that the files are really there, if it makes you feel better.
+
+     Alternately, you can specify the --update command-line option. Then you’ll
+     see your working files. The working files that you see are just the latest
+     version of your project, but rest assured the script is backing up your
+     whole repository, including all history. That’s located in the .hg
+     subdirectory.
 
 
   Q: Scheduled backups don’t work.
