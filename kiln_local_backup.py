@@ -68,8 +68,6 @@ def parse_command_line(args):
 
     parser.add_option('-t', '--token', dest='token', help='FogBugz API token')
     parser.add_option('-s', '--server', dest='server', help='Kiln server name')
-    parser.add_option('--save', dest='save', action='store_true',
-        default=False, help='save settings to the configuration file')
     parser.add_option('-q', '--quiet', dest='verbose', action='store_false',
         default=True, help='non-verbose output')
     parser.add_option('-l', '--limit', dest='limit', metavar='PATH',
@@ -245,13 +243,12 @@ def main():
         sys.exit('destination directory', destination_dir, "doesn't exist",
             "and couldn't be created")
 
-    # Save configuration if requested
-    if options.save:
-        configfile = open(os.path.join(destination_dir, CONFIG_FILE), 'w+')
-        config = {'server': options.server, 'token': options.token}
-        json.dump(config, configfile, indent=4)
-        configfile.write('\n')
-        configfile.close()
+    # Save configuration
+    configfile = open(os.path.join(destination_dir, CONFIG_FILE), 'w+')
+    config = {'server': options.server, 'token': options.token}
+    json.dump(config, configfile, indent=4)
+    configfile.write('\n')
+    configfile.close()
 
     # Keep track of state for printing status messages
     if options.verbose:

@@ -43,21 +43,17 @@ BACKING UP
   All repositories are backed up to the directory you specify. For example, if
   you want to back up to C:\KilnBackups, run:
 
-      python kiln-local-backup.py --save C:\KilnBackups
+      python kiln-local-backup.py C:\KilnBackups
 
   You will be prompted for your API token and Kiln server name. If your
   credentials aren’t stored in KilnAuth, you’ll also be prompted for your
   password.
-
-  The --save argument will save your API token and server name to a file in the
-  backup directory, so you won’t have to enter them next time.
+  
+  Your API token and server name are saved to a file in the backup directory,
+  so you won’t have to enter them next time.
 
   Once KilnAuth has your credentials, you will not be prompted for your
   password again.
-
-  The next time you want to back up, you can omit the --save argument:
-
-      python kiln-local-backup.py C:\KilnBackups
 
   To see the full syntax, including options for passing your API token and
   server name on the command line, type:
