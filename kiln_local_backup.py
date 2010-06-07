@@ -72,6 +72,9 @@ def parse_command_line(args):
         default=False, help='save settings to the configuration file')
     parser.add_option('-q', '--quiet', dest='verbose', action='store_false',
         default=True, help='non-verbose output')
+    parser.add_option('-l', '--limit', dest='limit', metavar='PATH',
+        help='only backup repos in the specified project/group (ex.: ' + \
+        'MyProject) (or: MyProject/MyGroup)')
 
     (options, args) = parser.parse_args(args)
 
@@ -173,7 +176,7 @@ def backup_repo(clone_url, target_dir, verbose):
         (drive, path) = os.path.splitdrive(os.environ['USERPROFILE'])
         child_env['HOMEDRIVE'] = drive
         child_env['HOMEPATH'] = path
-    
+
     proc = Popen(args, stdout=PIPE, stderr=PIPE, env=child_env)
     (_, stderrdata) = proc.communicate()
     if proc.returncode:
@@ -262,6 +265,27 @@ def main():
 
     # Back up the repositories
     repos = get_repos(options.server, options.token, options.verbose)
+
+    # If using --limit, filter repos we don’t want to backup.
+    if options.limit:
+        # Normalize the limit. Convert backslashes. Remove any
+        # leading or trailing slash.
+        limit = '/Kiln/Repo/%s' % options.limit.replace('\\', '/').strip('/')
+
+        # Replace spaces with dashes, as Kiln does (in case the
+        # user typed a human-readable repo name that has spaces)
+        limit = limit.replace(' ', '-')
+
+        # Filter. Case-insensitive. (Kiln won’t let you create two
+        # groups or projects with the same name but different case.)
+        repos = [_ for _ in repos if
+            _['url'].lower().startswith(limit.lower())]
+
+        if options.verbose:
+            message = '%d repositories match ' % len(repos)
+            message += 'the specified limit and will be backed up'
+            print console_encode(message)
+
     for repo in repos:
         # The "full name" from Kiln is the project name, plus any
         # group name and the repo name. Components are separated by
