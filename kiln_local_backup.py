@@ -287,9 +287,21 @@ def main():
             _['url'].lower().startswith(limit.lower())]
 
         if options.verbose:
-            message = '%d repositories match ' % len(repos)
-            message += 'the specified limit and will be backed up'
+            if len(repos) == 0:
+                message = 'No repositories match the specified limit. '
+                message += 'Nothing to back up!'
+            else:
+                if len(repos) == 1:
+                    message = '1 repository matches '
+                else:
+                    message = '%d repositories match ' % len(repos)
+                message += 'the specified limit and will be backed up'
             print console_encode(message)
+
+    # Return an error code if there are no repos to back up. This
+    # probably indicates a typo or similar mistake.
+    if len(repos) == 0:
+        overall_success = False
 
     for repo in repos:
         # The "full name" from Kiln is the project name, plus any
