@@ -73,6 +73,8 @@ def parse_command_line(args):
     parser.add_option('-l', '--limit', dest='limit', metavar='PATH',
         help='only backup repos in the specified project/group (ex.: ' + \
         'MyProject) (or: MyProject/MyGroup)')
+    parser.add_option('-u', '--update', dest='update', action='store_true',
+        default=False, help='update working copy when cloning or pulling')
 
     (options, args) = parser.parse_args(args)
 
@@ -122,7 +124,7 @@ def get_repos(server, token, verbose):
     return sorted(data, lambda x, y: cmp(x['fullName'], y['fullName']))
 
 
-def backup_repo(clone_url, target_dir, verbose):
+def backup_repo(clone_url, target_dir, verbose, update):
     """
     Backup the specified repository. Returns True if successful. If
     the backup fails, prints an error message and returns False.
@@ -162,9 +164,15 @@ def backup_repo(clone_url, target_dir, verbose):
 
     # Back it up
     if backup_method == 'clone':
-        args = ['hg', 'clone', '--noupdate', clone_url, target_dir]
+        if update:
+            args = ['hg', 'clone', clone_url, target_dir]
+        else:
+            args = ['hg', 'clone', '--noupdate', clone_url, target_dir]
     else:
-        args = ['hg', 'pull', '-R', target_dir]
+        if update:
+            args = ['hg', 'pull', '-u', '-R', target_dir]
+        else:
+            args = ['hg', 'pull', '-R', target_dir]
 
     # KilnAuth uses os.path.expanduser which should use
     # %USERPROFILE%. When run from Scheduled Tasks, it does not seem
@@ -313,7 +321,8 @@ def main():
         clone_url = encode_url(repo['cloneUrl'].strip('"'))
         target_dir = unicode(os.path.join(destination_dir, subdirectory))
 
-        success = backup_repo(clone_url, target_dir, options.verbose)
+        success = backup_repo(clone_url, target_dir, options.verbose,
+            options.update)
         overall_success = overall_success and success
 
     if overall_success:
