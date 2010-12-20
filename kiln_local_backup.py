@@ -326,8 +326,19 @@ def main():
 
             last_subdirectory = subdirectory
             count += 1
-            print console_encode('    >> [%d/%d] %s' % (count, len(repos),
+            print console_encode('    >> [%d/%d] %s ' % (count, len(repos),
                 os.path.basename(subdirectory))),
+
+            # The following line fixes Issue 1. Python conveniently
+            # inserts a space when a print statement ends with a
+            # comma. Unfortunately if Mercurial is going to prompt
+            # for a password, it does not know about the space that
+            # is “supposed” to be there and the result looks like:
+            # "reponamepassword:". The following line prevents
+            # Python from inserting the space. Instead we manually
+            # forced a space to the end of the print statement above.
+            sys.stdout.write('')
+
             sys.stdout.flush()
 
         clone_url = encode_url(repo['cloneUrl'].strip('"'))
