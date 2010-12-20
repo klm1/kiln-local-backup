@@ -121,9 +121,6 @@ def get_repos(server, token, verbose):
     if verbose:
         print console_encode('Found %d repositories' % len(data))
 
-    import pprint
-    pprint.pprint(data)
-
     return sorted(data, lambda x, y: cmp(x['fullName'], y['fullName']))
 
 
@@ -210,7 +207,8 @@ def console_encode(message):
     non-Unicode encoding.
     """
     if sys.stdout.encoding == None:
-        return message
+        # Encoding not available. Force ASCII.
+        return unicode(message).encode('ASCII', 'xmlcharrefreplace')
     if sys.stdout.encoding.upper().startswith('UTF'):
         # Unicode console. No need to convert.
         return message
