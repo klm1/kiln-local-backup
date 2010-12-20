@@ -121,6 +121,9 @@ def get_repos(server, token, verbose):
     if verbose:
         print console_encode('Found %d repositories' % len(data))
 
+    import pprint
+    pprint.pprint(data)
+
     return sorted(data, lambda x, y: cmp(x['fullName'], y['fullName']))
 
 
@@ -206,6 +209,8 @@ def console_encode(message):
     This is needed especially for Windows, where stdout is often a
     non-Unicode encoding.
     """
+    if sys.stdout.encoding == None:
+        return message
     if sys.stdout.encoding.upper().startswith('UTF'):
         # Unicode console. No need to convert.
         return message
