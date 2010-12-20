@@ -99,10 +99,10 @@ FAQS
 
 REFERENCES
 
-  To get a FogBugz API token, see: http://tinyurl.com/28w4p6r
+  To get a FogBugz API token, see: http://goo.gl/rGDQ9
 
   To get the KilnAuth Mercurial extension, install the Kiln Client, or see your
   Kiln Tools page. The URL is: http://[your kiln site]/Tools.
 
   simplejson is only needed for Python versions earlier than 2.6. It can be
-  found at http://tinyurl.com/dkprop.
+  found at http://goo.gl/nv3tu.
