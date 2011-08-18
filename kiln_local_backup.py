@@ -25,6 +25,7 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
+__version__ = "0.1.5"
 
 import sys
 import os
@@ -62,12 +63,15 @@ def parse_command_line(args):
         'pulling changes. In order to run this without user interaction, ' + \
         'you must install the FogBugz "KilnAuth" Mercurial extension and ' + \
         'clone at least one repository so that your credentials are saved.'
+    version = "%prog, v" + __version__
 
-    parser = OptionParser(usage=usage, description=description)
+    parser = OptionParser(usage=usage, description=description, version=version)
     parser.formatter = IndentedHelpFormatter(max_help_position=30)
 
     parser.add_option('-t', '--token', dest='token', help='FogBugz API token')
     parser.add_option('-s', '--server', dest='server', help='Kiln server name')
+    parser.add_option('--scheme', dest='scheme', type='choice',
+        choices=('https', 'http'), help='scheme used to connect to server')
     parser.add_option('-q', '--quiet', dest='verbose', action='store_false',
         default=True, help='non-verbose output')
     parser.add_option('-l', '--limit', dest='limit', metavar='PATH',
@@ -100,10 +104,17 @@ def parse_command_line(args):
         if not options.server and 'server' in config_data:
             options.server = config_data['server']
 
+        if not options.scheme and 'scheme' in config_data:
+            options.scheme = config_data['scheme']
+
+    # default to https if still no scheme specified
+    if not options.scheme:
+        options.scheme = 'https'
+        
     return (options, destination_dir)
 
 
-def get_repos(server, token, verbose):
+def get_repos(scheme, server, token, verbose):
     """
     Query Kiln to get the list of available repositories. Return the
     list, sorted by the Kiln “full name” of each repository.
@@ -113,7 +124,7 @@ def get_repos(server, token, verbose):
         print console_encode('Getting the list of repositories from %s' %
             server)
 
-    url = 'https://%s/kiln/Api/Repos/?token=%s' % (server, token)
+    url = '%s://%s/kiln/Api/Repos/?token=%s' % (scheme, server, token)
     data = json.load(urllib2.urlopen(url))
     if 'error' in data:
         sys.exit(data['error'])
@@ -141,7 +152,8 @@ def backup_repo(clone_url, target_dir, verbose, update):
         # Yes, it exists. Does it refer to the same repository?
         default = Popen(['hg', 'paths', '-R', target_dir, 'default'],
             stdout=PIPE, stderr=PIPE).communicate()[0].strip()
-
+        default = urllib2.unquote(default)
+        
         if default == clone_url:
             # It exists and is identical. We will pull.
             backup_method = 'pull'
@@ -256,7 +268,8 @@ def main():
 
     # Save configuration
     configfile = open(os.path.join(destination_dir, CONFIG_FILE), 'w+')
-    config = {'server': options.server, 'token': options.token}
+    config = {'server': options.server, 'token': options.token, 
+        'scheme': options.scheme}
     json.dump(config, configfile, indent=4)
     configfile.write('\n')
     configfile.close()
@@ -272,7 +285,7 @@ def main():
     overall_success = True
 
     # Back up the repositories
-    repos = get_repos(options.server, options.token, options.verbose)
+    repos = get_repos(options.scheme, options.server, options.token, options.verbose)
 
     # If using --limit, filter repos we don’t want to backup.
     if options.limit:
@@ -287,7 +300,7 @@ def main():
         # Filter. Case-insensitive. (Kiln won’t let you create two
         # groups or projects with the same name but different case.)
         repos = [_ for _ in repos if
-            _['url'].lower().startswith(limit.lower())]
+            _['url'].lower().endswith(limit.lower())]
 
         if options.verbose:
             if len(repos) == 0:
