@@ -25,7 +25,7 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 
 import sys
 import os
@@ -124,7 +124,13 @@ def get_repos(scheme, server, token, verbose):
         print console_encode('Getting the list of repositories from %s' %
             server)
 
-    url = '%s://%s/kiln/Api/Repos/?token=%s' % (scheme, server, token)
+    urlp = urlparse.urlparse('%s://%s/' % (scheme, server))
+
+    if urlp.netloc[-10:] == 'kilnhg.com':
+        url = '%s://%s/Api/Repos/?token=%s' % (scheme, server, token)
+    else:
+        url = '%s://%s/kiln/Api/Repos/?token=%s' % (scheme, server, token)
+
     data = json.load(urllib2.urlopen(url))
     if 'error' in data:
         sys.exit(data['error'])
