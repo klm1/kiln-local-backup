@@ -25,7 +25,7 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-__version__ = "0.1.6"
+__version__ = "0.2.0"
 
 import sys
 import os
@@ -33,6 +33,7 @@ import urllib2
 import time
 import urllib
 import urlparse
+from operator import itemgetter
 from subprocess import Popen, PIPE
 from optparse import OptionParser, IndentedHelpFormatter
 
@@ -46,6 +47,7 @@ except ImportError:
             'install simplejson (http://pypi.python.org/pypi/simplejson/).')
 
 CONFIG_FILE = 'backup.config'
+debug = False
 
 
 def parse_command_line(args):
@@ -56,6 +58,8 @@ def parse_command_line(args):
 
     Calls sys.exit() if the command line could not be parsed.
     """
+
+    global debug
 
     usage = 'usage: %prog [options] DESTINATION-DIR'
     description = 'Backs up all available Mercurial repositories on Kiln ' + \
@@ -74,6 +78,8 @@ def parse_command_line(args):
         choices=('https', 'http'), help='scheme used to connect to server')
     parser.add_option('-q', '--quiet', dest='verbose', action='store_false',
         default=True, help='non-verbose output')
+    parser.add_option('-d', '--debug', dest='debug', action='store_true',
+        default=False, help='additional output for debugging')
     parser.add_option('-l', '--limit', dest='limit', metavar='PATH',
         help='only backup repos in the specified project/group (ex.: ' + \
         'MyProject) (or: MyProject/MyGroup)')
@@ -89,6 +95,7 @@ def parse_command_line(args):
     if len(args) > 1:
         parser.error('Unknown arguments passed after destination directory')
     destination_dir = args[0]
+    debug = options.debug
 
     # Now get any saved options from the configuration file and use
     # them to fill in any missing options.
@@ -121,24 +128,36 @@ def get_repos(scheme, server, token, verbose):
     """
 
     if verbose:
-        print console_encode('Getting the list of repositories from %s' %
-            server)
+        print console_encode('Getting the list of repositories from %s' % server)
 
-    urlp = urlparse.urlparse('%s://%s/' % (scheme, server))
+    url = '%s://%s/kiln/Api/2.0/Project/?token=%s' % (scheme, server, token)
+    if debug:
+        print "get Projects: url:", url
+    projects = json.load(urllib2.urlopen(url))
+    if 'errors' in projects:
+        sys.exit('Error from server: ' + projects['errors'][0]['sError'])
 
-    if urlp.netloc[-10:] == 'kilnhg.com':
-        url = '%s://%s/Api/Repos/?token=%s' % (scheme, server, token)
-    else:
-        url = '%s://%s/kiln/Api/Repos/?token=%s' % (scheme, server, token)
+    ourRepos = []
 
-    data = json.load(urllib2.urlopen(url))
-    if 'error' in data:
-        sys.exit(data['error'])
+    for project in projects:
+        for repoGroup in project['repoGroups']:
+            # watch for empty Groups
+            if repoGroup['sSlug'] == '':
+                repoGroup['sSlug'] = 'Group'
+            if repoGroup['sName'] == '':
+                repoGroup['sName'] = 'Group'
+            for repo in repoGroup['repos']:
+                # we'll build a URL using the slugs but also save the human-readable
+                # names for sorting our list by project, group, repo
+                repoPath = project['sSlug'] + '/' + repoGroup['sSlug'] + '/' + repo['sSlug']
+                if repo['sStatus'] != 'deleted':
+                    ourRepos.append({'repoPath': repoPath, 'project': project['sName'], 
+                        'repoGroup': repoGroup['sName'], 'repo': repo['sName']})
 
     if verbose:
-        print console_encode('Found %d repositories' % len(data))
+        print console_encode('Found %d repositories' % len(ourRepos))
 
-    return sorted(data, lambda x, y: cmp(x['fullName'], y['fullName']))
+    return sorted(ourRepos, key=itemgetter('project', 'repoGroup', 'repo'))
 
 
 def backup_repo(clone_url, target_dir, verbose, update):
@@ -191,6 +210,10 @@ def backup_repo(clone_url, target_dir, verbose, update):
             args = ['hg', 'pull', '-u', '-R', target_dir]
         else:
             args = ['hg', 'pull', '-R', target_dir]
+
+    if debug:
+        print "Backup Method:", backup_method
+        print "args:", args
 
     # KilnAuth uses os.path.expanduser which should use
     # %USERPROFILE%. When run from Scheduled Tasks, it does not seem
@@ -269,8 +292,8 @@ def main():
     if not os.path.isdir(destination_dir):
         os.makedirs(destination_dir)
     if not os.path.isdir(destination_dir):
-        sys.exit('destination directory', destination_dir, "doesn't exist",
-            "and couldn't be created")
+        sys.exit('Destination directory "' + destination_dir + '"' 
+            + " doesn't exist and couldn't be created.")
 
     # Save configuration
     configfile = open(os.path.join(destination_dir, CONFIG_FILE), 'w+')
@@ -292,12 +315,15 @@ def main():
 
     # Back up the repositories
     repos = get_repos(options.scheme, options.server, options.token, options.verbose)
+    if debug:
+        print "Server:", options.server
+        print "token:", options.token
 
     # If using --limit, filter repos we don’t want to backup.
     if options.limit:
         # Normalize the limit. Convert backslashes. Remove any
         # leading or trailing slash.
-        limit = '/Kiln/Repo/%s' % options.limit.replace('\\', '/').strip('/')
+        limit = '%s' % options.limit.replace('\\', '/').strip('/')
 
         # Replace spaces with dashes, as Kiln does (in case the
         # user typed a human-readable repo name that has spaces)
@@ -306,7 +332,7 @@ def main():
         # Filter. Case-insensitive. (Kiln won’t let you create two
         # groups or projects with the same name but different case.)
         repos = [_ for _ in repos if
-            _['url'].lower().endswith(limit.lower())]
+            _['repoPath'].lower().startswith(limit.lower())]
 
         if options.verbose:
             if len(repos) == 0:
@@ -326,13 +352,12 @@ def main():
         overall_success = False
 
     for repo in repos:
-        # The "full name" from Kiln is the project name, plus any
-        # group name and the repo name. Components are separated by
-        # a right angle quote (»). Turn this into a path by
-        # converting angle quotes into path separators.
-        parts = repo['fullName'].split(u'»')
-        parts = [_.strip() for _ in parts]      # trim whitespace
-        subdirectory = os.path.join(*parts)
+        # Convert the repo path for subdirectory use if necessary
+        # on Windows (/ to \).
+        if os.sep == '/':
+            subdirectory = repo['repoPath']
+        else:
+            subdirectory = os.path.normpath(repo['repoPath'])
 
         if options.verbose:
             # For the progress message, show the project and group
@@ -363,11 +388,18 @@ def main():
 
             sys.stdout.flush()
 
-        clone_url = encode_url(repo['cloneUrl'].strip('"'))
+        clone_url = encode_url('%s://%s/kiln/Code/%s' % (options.scheme, options.server, repo['repoPath']))
         target_dir = unicode(os.path.join(destination_dir, subdirectory))
 
-        success = backup_repo(clone_url, target_dir, options.verbose,
-            options.update)
+        if debug:
+            print
+            print "repo['repoPath']:", repo['repoPath']
+            print "clone_url:", clone_url
+            print "target_dir:", target_dir
+            print "options.verbose:", options.verbose
+            print "options.update:", options.update
+
+        success = backup_repo(clone_url, target_dir, options.verbose, options.update)
         overall_success = overall_success and success
 
     if overall_success:
