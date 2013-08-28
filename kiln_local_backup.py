@@ -25,7 +25,7 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 import sys
 import os
@@ -121,7 +121,7 @@ def parse_command_line(args):
     return (options, destination_dir)
 
 
-def get_repos(scheme, server, token, verbose):
+def get_repos(scheme, server, kiln_path, token, verbose):
     """
     Query Kiln to get the list of available repositories. Return the
     list, sorted by the Kiln “full name” of each repository.
@@ -129,8 +129,8 @@ def get_repos(scheme, server, token, verbose):
 
     if verbose:
         print console_encode('Getting the list of repositories from %s' % server)
-
-    url = '%s://%s/kiln/Api/2.0/Project/?token=%s' % (scheme, server, token)
+    
+    url = '%s://%s/%sApi/2.0/Project/?token=%s' % (scheme, server, kiln_path, token)
     if debug:
         print "get Projects: url:", url
     projects = json.load(urllib2.urlopen(url))
@@ -313,8 +313,12 @@ def main():
     # even if there’s an error.
     overall_success = True
 
+    kiln_path = 'kiln/'
+    if ('kilnhg.com' in options.server.lower()):
+        kiln_path = ''
+        
     # Back up the repositories
-    repos = get_repos(options.scheme, options.server, options.token, options.verbose)
+    repos = get_repos(options.scheme, options.server, kiln_path, options.token, options.verbose)
     if debug:
         print "Server:", options.server
         print "token:", options.token
@@ -388,7 +392,7 @@ def main():
 
             sys.stdout.flush()
 
-        clone_url = encode_url('%s://%s/kiln/Code/%s' % (options.scheme, options.server, repo['repoPath']))
+        clone_url = encode_url('%s://%s/%sCode/%s' % (options.scheme, options.server, kiln_path, repo['repoPath']))
         target_dir = unicode(os.path.join(destination_dir, subdirectory))
 
         if debug:
