@@ -61,7 +61,7 @@ subdirectory for Mercurial, and the .git directory for Git.
 
 Q: Scheduled backups don’t work.
 
-A: Make sure you are running the backup under THE SAME USER ACCOUNT you were
+A: Make sure you are running the backup under **the same user account** you were
 using when you entered your password for KilnAuth.
 
 
@@ -76,7 +76,7 @@ A: It should work. On Windows, non-ASCII characters in the repository name
 will be replaced with equivalent XML character references. On Unix/Mac,
 non-ASCII names will be used as-is.
 
-REFERENCES
+## REFERENCES
 
 To get a FogBugz API token, see: http://goo.gl/buFUPB
 
