@@ -1,5 +1,0 @@
-syntax: glob
-
-patches/
-test/
-zips/
