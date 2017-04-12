@@ -9,7 +9,7 @@ For Windows you need:
 
 * A Kiln account
 * A FogBugz API token
-* Python 2.4 or higher
+* Python 2.4 or higher (note that this script is not compatible with Python 3.x)
 * simplejson (not needed with Python 2.6 or higher)
 * The Kiln Tools installed
 
